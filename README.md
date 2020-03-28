@@ -13,3 +13,9 @@ view/flags elastic [
 	button "OK" [quit] #fix
 ] 'resize
 ```
+
+Anchors meaning:
+`#ignore = #ignore-x #ignore-y` (default if no anchor provided) - ignored by the geometry manager (fixed size & offset)
+`#fix    = #fix-x    #fix-y` - size is fixed, offset is scaled proportionally to window size 
+`#scale  = #scale-x  #scale-y` - both size and offset are scaled proportionally to window size 
+`#fill   = #fill-x   #fill-y` - same as `#scale` but fills the available space and avoids collision (with fixed faces)
