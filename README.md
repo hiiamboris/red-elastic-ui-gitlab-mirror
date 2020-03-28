@@ -1,6 +1,6 @@
 # Red Elastic UI
 
-Provides automatic window resize handling
+Provides automatic window resize handling for [Red Language](https://www.red-lang.org/)
 
 ![Illustration GIF](https://i.gyazo.com/51e60f50da56e5fae5db47ac8a025ffa.gif)
 
