@@ -72,8 +72,8 @@ context [
 		|	set w word! if (styles/:w)									;-- found a new widget
 			(insert fix b: flush n: length? b) n skip fix: 				;-- fix the previous one and remember a new fix position
 			(style: w  with: none  clear align)							;-- reset the style and accumulators
-		|	remove [set a issue! if (find anchors* a: to word! a)]		;-- acceptable anchor found
-			(align |= a)											;-- save it
+		|	remove [set a issue! if (attempt [find anchors* a: to word! a])]	;-- acceptable anchor found; attempt defends against #608-like issues
+			(align |= a)												;-- save it
 		|	if (find groups style) set b block! (elastic b)				;-- recursively process panels
 		|	skip
 		] end (insert fix flush)]
