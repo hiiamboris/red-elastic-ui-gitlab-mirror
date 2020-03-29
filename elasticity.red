@@ -281,12 +281,16 @@ context [
 			]
 		]
 
+		old: system/view/auto-sync?
+		system/view/auto-sync?: no
 		foreach [fa geom'] pending [					;-- commit the changes
 			maybe fa/offset: geom'/offset
 			if maybe fa/size: geom'/size [				;-- if size changes
 				unless empty? fa/pane [handle-resize fa]	;-- descend into child faces
 			]
 		]
+		system/view/auto-sync?: old
+		if pa/type = 'window [show pa]
 	]
 
 	evt-func: function [fa [object!] ev [event!]] [
