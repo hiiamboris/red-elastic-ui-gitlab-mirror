@@ -78,6 +78,7 @@ context [
 
 
 	geometries: make hash! []			;-- holds the first known geometry of each face; map does not allow objects so using hash
+	margins: make hash! []				;-- cache for margins
 
 	check-geometry: function [fa [object!]] [		;-- checks if face's original geometry is known and returns it
 		unless geom: geometries -> fa [
@@ -88,8 +89,9 @@ context [
 				size:     (fa/size)
 				origin:   (fa/offset * pa/size / (max 1x1 pa/size - fa/size))	;-- avoid / 0x0
 			]]
+			return reduce [no geom]
 		]
-		geom
+		reduce [yes geom]
 	]
 
 	paddings-of: function [
@@ -113,14 +115,16 @@ context [
 		reduce [r1 r2]
 	]
 
-	;@@ TODO: cache it
 	original-margin: function [
 		"Calculate first known margin (min proximity to other faces) of face FA"
 		fa [object!]
 	][
-		pads: paddings-of fa geometries
-		r: min pads/1 pads/2
-		min r/x r/y
+		unless r: select/same margins fa [
+			pads: paddings-of fa geometries
+			r: min pads/1 pads/2
+			repend margins [fa r: min r/x r/y]
+		]
+		r
 	]
 
 	dist?: func [xy1 [pair!] xy2 [pair!]] [
@@ -233,7 +237,7 @@ context [
 		pa [object!] "Parent face"
 		/local size offset origin
 	][
-		p0: check-geometry pa
+		p0: second check-geometry pa
 		pending: make hash! []
 		to-fill: make hash! []							;-- faces to correct after placement
 		foreach fa pa/pane [
@@ -242,7 +246,7 @@ context [
 			if anks = [ignore ignore] [continue]		;-- does not require any action
 			set [x-anchor y-anchor] anks
 
-			do bind (check-geometry fa) 'pa				;-- start with the original geometry
+			do bind (second check-geometry fa) 'pa		;-- start with the original geometry
 			foreach [x anchor] compose [x (x-anchor) y (y-anchor)] [
 				if anchor = 'ignore [continue]
 				scale: 1.0 * pa/size/:x / max 1 p0/size/:x			;-- scale everything compared to the initial size
@@ -281,9 +285,11 @@ context [
 	]
 
 	evt-func: function [fa [object!] ev [event!]] [
-		if find [resizing resize] ev/type [
-			check-geometry fa
-			if fa/type = 'window [handle-resize fa]
+		all [
+			find [resizing resize] ev/type				;-- resize event
+			first check-geometry fa						;-- on a face which geometry is already known (saves it otherwise)
+			fa/type = 'window							;-- it's a window
+			handle-resize fa							;-- resize it
 		]
 		none											;-- the event can be processed by other handlers
 	]
