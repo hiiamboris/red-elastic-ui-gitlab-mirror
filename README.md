@@ -19,3 +19,5 @@ Anchors meaning:
 - `#fix    = #fix-x    #fix-y` - size is fixed, offset is scaled proportionally to window size 
 - `#scale  = #scale-x  #scale-y` - both size and offset are scaled proportionally to window size 
 - `#fill   = #fill-x   #fill-y` - same as `#scale` but fills the available space and avoids collision (with fixed faces)
+
+Tip: anchors should come after style name (e.g. `base`) and before the other style name to be properly assigned.
