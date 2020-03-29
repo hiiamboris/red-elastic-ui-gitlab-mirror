@@ -27,6 +27,10 @@ context [
 	->:  make op! func [a b] [select/same :a :b]
 	|=:  make op! func [a b] [append :a :b]
 	|=1: make op! func [a b] [append/only :a :b]
+	maybe: func [:w [set-path!] v][
+		w: as path! w
+		unless :v = get/any w [set/any w :v]
+	]
 
 	;; grouped by axis
 	anchors: [ x: [ignore-x fix-x fill-x scale-x] y: [ignore-y fix-y fill-y scale-y] ]
@@ -278,9 +282,10 @@ context [
 		]
 
 		foreach [fa geom'] pending [					;-- commit the changes
-			fa/offset: geom'/offset
-			fa/size:   geom'/size
-			unless empty? fa/pane [handle-resize fa]	;-- descend into child faces
+			maybe fa/offset: geom'/offset
+			if maybe fa/size: geom'/size [				;-- if size changes
+				unless empty? fa/pane [handle-resize fa]	;-- descend into child faces
+			]
 		]
 	]
 
