@@ -21,3 +21,5 @@ Anchors meaning:
 - `#fill   = #fill-x   #fill-y` - same as `#scale` but fills the available space and avoids collision (with fixed faces)
 
 Tip: anchors should come after style name (e.g. `base`) and before the other style name to be properly assigned.
+
+Another tip: it remembers the *initial* layout of your window and tries to conform with it (and thus infers a lot of parameters indirectly, from VID).
