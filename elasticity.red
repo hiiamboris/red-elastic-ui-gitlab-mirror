@@ -303,9 +303,14 @@ context [
 		none											;-- the event can be processed by other handlers
 	]
 
+	n: s: none
 	unless find/same system/view/handlers :evt-func [	;-- multiple includes protection
 		;; extend styles with a field to hold alignment info
-		foreach [n s] system/view/VID/styles [append s/template [anchors: [ignore ignore]]]
+		foreach [n s] system/view/VID/styles [
+			unless n = 'window [			;-- exclude window as it is unaffected anyway and to escape #4396
+				append s/template [anchors: [ignore ignore]]
+			]
+		]
 		insert-event-func :evt-func
 	]
 ]
