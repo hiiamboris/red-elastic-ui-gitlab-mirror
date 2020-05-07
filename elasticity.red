@@ -256,7 +256,7 @@ context [
 				scale: 1.0 * pa/size/:x / max 1 p0/size/:x			;-- scale everything compared to the initial size
 				origin/:x: to integer! origin/:x * scale
 				size/:x: either anchor = 'fix [size/:x] [to integer! size/:x * scale]
-				offset/:x: origin/:x * (pa/size/:x - size/:x) / pa/size/:x
+				offset/:x: to integer! origin/:x * (pa/size/:x - size/:x) / max 1 pa/size/:x
 				if anchor = 'fill [									;-- schedule the expansion for fill-anchors
 					pos: all [x = 'y  find/same/tail to-fill fa]	;-- `put` reinvention
 					either pos [ insert pos x ][ repend to-fill [fa x] ]
