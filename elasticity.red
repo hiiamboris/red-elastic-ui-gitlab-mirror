@@ -307,7 +307,10 @@ context [
 	unless find/same system/view/handlers :evt-func [	;-- multiple includes protection
 		;; extend styles with a field to hold alignment info
 		foreach [n s] system/view/VID/styles [
-			unless n = 'window [			;-- exclude window as it is unaffected anyway and to escape #4396
+			unless any [
+				n = 'window								;-- exclude window as it is unaffected anyway and to escape #4396
+				find/case s/template [anchors:]			;-- exclude styles already containing the anchor block
+			][
 				append s/template [anchors: [ignore ignore]]
 			]
 		]
