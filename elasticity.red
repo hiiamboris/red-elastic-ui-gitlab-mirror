@@ -246,7 +246,7 @@ context [
 		to-fill: make hash! []							;-- faces to correct after placement
 		foreach fa pa/pane [
 			anks: select fa 'anchors
-			unless block? :anks [continue]				;-- hijacked?
+			unless block? :anks [continue]				;-- hijacked? or custom style without anchors?
 			if anks = [ignore ignore] [continue]		;-- does not require any action
 			set [x-anchor y-anchor] anks
 
