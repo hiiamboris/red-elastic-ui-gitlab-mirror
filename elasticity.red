@@ -17,6 +17,11 @@ Red [
 			#fix    = #fix-x    #fix-y        -- size is fixed, offset is scaled proportionally to window size 
 			#scale  = #scale-x  #scale-y      -- both size and offset are scaled proportionally to window size 
 			#fill   = #fill-x   #fill-y       -- same as #scale but fills the available space and avoids collision (with fixed faces)
+
+		TODO: detect destroyed faces somehow and forget?
+		TODO: how to be friendly to manual resize of panels? they produce no resize events to hook to
+		  I could create reactions for `size` facet of all panels, but this may be too much overhead
+		  alternatively, I could export `handle-resize` for manual invocation
 	}
 	needs:    view
 ]
@@ -28,8 +33,8 @@ context [
 	|=:  make op! func [a b] [append :a :b]
 	|=1: make op! func [a b] [append/only :a :b]
 	maybe: func [:w [set-path!] v][
-		w: as path! w
-		unless :v = get/any w [set/any w :v]
+		w: as path! w									;-- workaround for #4448
+		if :v <> get/any w [set/any w :v]				;-- this version returns none if it doesn't change the value!
 	]
 
 	;; grouped by axis
@@ -38,7 +43,7 @@ context [
 		fix    [fix-x    fix-y   ]
 		fill   [fill-x   fill-y  ]
 		scale  [scale-x  scale-y ]
-		ignore [ignore-x ignore-y]		;-- already default ;@@ TODO: change defaults with a hashtag?
+		ignore [ignore-x ignore-y]						;-- already default ;@@ TODO: change defaults with a hashtag?
 	]
 	anchors*: compose [(anchors/x) (anchors/y) (extract macros 2)]
 
@@ -52,6 +57,7 @@ context [
 		layout [block!]
 		/local w
 	][
+		fix-styles														;-- useful when defining own styles after importing the elasticity
 		styles: copy system/view/VID/styles
 		groups: [panel group-box tab-panel]
 		align: copy []													;-- accumulator for anchor words
@@ -84,14 +90,20 @@ context [
 	geometries: make hash! []			;-- holds the first known geometry of each face; map does not allow objects so using hash
 	margins: make hash! []				;-- cache for margins
 
-	check-geometry: function [fa [object!]] [		;-- checks if face's original geometry is known and returns it
+	check-geometry: function [fa [object!]] [			;-- checks if face's original geometry is known and returns it
 		unless geom: geometries -> fa [
 			;; remember the initial geometry
 			pa: fa/parent
 			repend geometries [fa geom: compose [
 				offset:   (fa/offset)
 				size:     (fa/size)
-				origin:   (fa/offset * pa/size / (max 1x1 pa/size - fa/size))	;-- avoid / 0x0
+				area:     (pa/size)						;-- required for newly created faces
+				origin:   (								;-- avoid / 0x0 : when pa/size = fa/size, set origin to center
+					a: fa/offset * pa/size  b: pa/size - fa/size
+					as-pair
+						any [attempt [a/x / b/x] pa/size/x / 2]
+						any [attempt [a/y / b/y] pa/size/y / 2]
+				)
 			]]
 			return reduce [no geom]
 		]
@@ -103,7 +115,7 @@ context [
 		fa [object!] geometries [hash!]
 	][
 		fgeom: geometries -> fa
-		pgeom: any [geometries -> pa: fa/parent  pa]
+		pgeom: any [geometries -> pa: fa/parent pa]		;-- for screen - uses itself
 		e: fgeom/size + s: fgeom/offset
 		r1: s  r2: pgeom/size - e						;-- start with min distances (x y) to parent bounds
 		foreach f' pa/pane [							;-- try to find closer faces
@@ -116,7 +128,7 @@ context [
 				]
 			]
 		]
-		reduce [r1 r2]
+		reduce [max 0x0 r1  max 0x0 r2]					;-- treat negative margins as 0 (in case face is bigger than it's pane)
 	]
 
 	original-margin: function [
@@ -216,8 +228,7 @@ context [
 
 		;; multiple clippings may reduce the face too much: try to expand it now
 		unless bad? [
-			pa-size': max 1x1 select (geometries -> pa) 'size
-			margin: (original-margin fa) * pa/size / pa-size'	;-- scale original margins to current parent size
+			margin: (original-margin fa) * pa/size / max 1x1 geom/area	;-- scale original margins to current parent size
 
 			;; can't reliably expand along 2 axes at once, only one by one (X then Y?):
 			foreach x [x y] [
@@ -239,21 +250,22 @@ context [
 	handle-resize: function [
 		"Resize all child faces of face PA when it was resized"
 		pa [object!] "Parent face"
-		/local size offset origin
+		/local size offset area origin					;-- used by `do bind`
 	][
-		p0: second check-geometry pa
 		pending: make hash! []
 		to-fill: make hash! []							;-- faces to correct after placement
+
+		;; first just rescale/reposition faces, save into `pending` list
 		foreach fa pa/pane [
 			anks: select fa 'anchors
-			unless block? :anks [continue]				;-- hijacked? or custom style without anchors?
+			unless block? :anks [continue]				;-- hijacked? or custom style without anchors? - ignore it
 			if anks = [ignore ignore] [continue]		;-- does not require any action
 			set [x-anchor y-anchor] anks
 
-			do bind (second check-geometry fa) 'pa		;-- start with the original geometry
+			do bind (second check-geometry fa) 'local	;-- start with the original geometry
 			foreach [x anchor] compose [x (x-anchor) y (y-anchor)] [
 				if anchor = 'ignore [continue]
-				scale: 1.0 * pa/size/:x / max 1 p0/size/:x			;-- scale everything compared to the initial size
+				scale: 1.0 * pa/size/:x / max 1 area/:x				;-- scale everything compared to the initial size
 				origin/:x: to integer! origin/:x * scale
 				size/:x: either anchor = 'fix [size/:x] [to integer! size/:x * scale]
 				offset/:x: to integer! origin/:x * (pa/size/:x - size/:x) / max 1 pa/size/:x
@@ -262,10 +274,10 @@ context [
 					either pos [ insert pos x ][ repend to-fill [fa x] ]
 				]
 			]
-			repend pending [fa compose [offset: (offset) size: (size) origin: (origin)]]
+			repend pending [fa compose [offset: (offset) size: (size) area: (area) origin: (origin)]]
 		]
 
-		;; try to clip & expand `fill` faces after all other ones are positioned
+		;; now try to clip & expand `fill` faces after all other ones are positioned
 		forall to-fill [
 			fa: to-fill/1  to-fill: next to-fill
 			geom': pending -> fa
@@ -285,35 +297,41 @@ context [
 		maybe system/view/auto-sync?: no
 		foreach [fa geom'] pending [					;-- commit the changes
 			maybe fa/offset: geom'/offset
-			if maybe fa/size: geom'/size [				;-- if size changes
-				unless empty? fa/pane [handle-resize fa]	;-- descend into child faces
+			unless fa/size = geom'/size [
+				if panel?: not empty? fa/pane [			;-- remember old child geometries before the resize
+					foreach f' fa/pane [check-geometry f']
+				]
+				maybe fa/size: geom'/size
+				if panel? [handle-resize fa]			;-- descend into child faces and resize them
 			]
 		]
 		maybe system/view/auto-sync?: old
 		if pa/type = 'window [show pa]
 	]
 
+	fix-styles: function ["Ensures every style contains the anchors facet"] [
+		foreach [name style] system/view/VID/styles [
+			unless any [
+				name = 'window							;-- exclude window as it is unaffected anyway and to escape #4396
+				find/case style/template [anchors:]		;-- exclude styles already containing the anchor block
+			][
+				append style/template [anchors: [ignore ignore]]
+			]
+		]
+	]
+
 	evt-func: function [fa [object!] ev [event!]] [
 		all [
 			find [resizing resize] ev/type				;-- resize event
 			first check-geometry fa						;-- on a face which geometry is already known (saves it otherwise)
-			fa/type = 'window							;-- it's a window
+			fa/type = 'window							;-- it's a window (it's always a window?)
 			handle-resize fa							;-- resize it
 		]
 		none											;-- the event can be processed by other handlers
 	]
 
-	n: s: none
 	unless find/same system/view/handlers :evt-func [	;-- multiple includes protection
-		;; extend styles with a field to hold alignment info
-		foreach [n s] system/view/VID/styles [
-			unless any [
-				n = 'window								;-- exclude window as it is unaffected anyway and to escape #4396
-				find/case s/template [anchors:]			;-- exclude styles already containing the anchor block
-			][
-				append s/template [anchors: [ignore ignore]]
-			]
-		]
+		fix-styles
 		insert-event-func :evt-func
 	]
 ]
