@@ -22,4 +22,5 @@ Anchors meaning:
 
 Tip: anchors should come after style name (e.g. `base`) and before the other style name to be properly assigned.
 
-Another tip: it remembers the *initial* layout of your window and tries to conform with it (and thus infers a lot of parameters indirectly, from VID).
+Another tip: it remembers the *initial* layout of your window and tries to conform with it (and thus infers a lot of parameters indirectly, from VID).<br>
+So how to manually change face's size and make it remember it? Recreate the face!

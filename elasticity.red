@@ -74,7 +74,7 @@ context [
 		parse fix: layout [any [
 			'style set w set-word! (put styles to word! w yes)			;-- a new style declared - consider it too
 		|	'with set with block!										;-- use provided `with` block instead of overriding it
-		|	['data | 'extra] block!										;-- skip data blocks
+		|	['data | 'extra] skip										;-- skip data blocks and words
 		|	set w word! if (styles/:w)									;-- found a new widget
 			(insert fix b: flush n: length? b) n skip fix: 				;-- fix the previous one and remember a new fix position
 			(style: w  with: none  clear align)							;-- reset the style and accumulators
