@@ -59,7 +59,11 @@ context [
 	][
 		fix-styles														;-- useful when defining own styles after importing the elasticity
 		styles: copy system/view/VID/styles
-		groups: [panel group-box tab-panel]
+		groups: collect [
+			foreach [name spec] styles [
+				if spec/template/type = 'panel [keep name]
+			]
+		]
 		align: copy []													;-- accumulator for anchor words
 		flush: does [													;-- places the accumulated anchors into a with block
 			if empty? align [return []]
