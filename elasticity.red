@@ -98,6 +98,7 @@ context [
 		unless geom: geometries -> fa [
 			;; remember the initial geometry
 			pa: fa/parent
+			unless fa/offset [return reduce [no none]]	;@@ TODO: or issue a warning about this?
 			repend geometries [fa geom: compose [
 				offset:   (fa/offset)
 				size:     (fa/size)
@@ -256,6 +257,7 @@ context [
 		pa [object!] "Parent face"
 		/local size offset area origin					;-- used by `do bind`
 	][
+		; print ["-ENTERING-" pa/type pa/size "AT" pa/offset]
 		pending: make hash! []
 		to-fill: make hash! []							;-- faces to correct after placement
 
@@ -268,7 +270,11 @@ context [
 
 			do bind (second check-geometry fa) 'local	;-- start with the original geometry
 			foreach [x anchor] compose [x (x-anchor) y (y-anchor)] [
-				if anchor = 'ignore [continue]
+				if anchor = 'ignore [
+					offset/:x: fa/offset/:x							;-- use current geometry, not the one remembered
+					size/:x:   fa/size/:x
+					continue
+				]
 				scale: 1.0 * pa/size/:x / max 1 area/:x				;-- scale everything compared to the initial size
 				origin/:x: to integer! origin/:x * scale
 				size/:x: either anchor = 'fix [size/:x] [to integer! size/:x * scale]
@@ -300,6 +306,7 @@ context [
 		old: system/view/auto-sync?
 		maybe system/view/auto-sync?: no
 		foreach [fa geom'] pending [					;-- commit the changes
+			; print [{OFFSET} fa/offset {->} geom'/offset "FOR" fa/type "OF" fa/size]
 			maybe fa/offset: geom'/offset
 			unless fa/size = geom'/size [
 				if panel?: not empty? fa/pane [			;-- remember old child geometries before the resize
